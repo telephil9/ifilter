@@ -1,0 +1,13 @@
+ifilter
+=======
+Basic image color filters.
+
+ifilter reads an image from standard input, applies a color filter
+and dumps the resulting image to standard output.
+
+Available color filters are:
+- grayscale
+- sepia
+
+usage: ifilter [grayscale|sepia]
+
