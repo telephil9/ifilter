@@ -8,6 +8,7 @@ and dumps the resulting image to standard output.
 Available color filters are:
 - grayscale
 - sepia
+- invert
 
-usage: ifilter [grayscale|sepia]
+usage: ifilter [grayscale|sepia|invert]
 

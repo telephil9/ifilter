@@ -5,7 +5,13 @@
 
 #define MIN(x,y) ((x)<(y)?(x):(y))
 
-typedef void(*filterfun)(uchar[3]);
+typedef struct Filter Filter;
+
+struct Filter
+{
+	const char *name;
+	void (*filter)(uchar[3]);
+};
 
 void
 grayscale(uchar p[3])
@@ -28,11 +34,25 @@ sepia(uchar p[3])
 }
 
 void
+invert(uchar p[3])
+{
+	p[0] = 255 - p[0];
+	p[1] = 255 - p[1];
+	p[2] = 255 - p[2];
+}
+
+void
 usage(void)
 {
-	fprint(2, "usage: %s [grayscale|sepia]\n", argv0);
+	fprint(2, "usage: %s [grayscale|sepia|invert]\n", argv0);
 	exits("usage");
 }
+
+static Filter filters[] = {
+	{ "grayscale", grayscale },
+	{ "sepia", sepia },
+	{ "invert", invert },
+};
 
 void
 main(int argc, char *argv[])
@@ -40,18 +60,20 @@ main(int argc, char *argv[])
 	Memimage *i;
 	int w, h, p, n;
 	uchar *buf;
-	filterfun filter;
+	Filter *f;
 
-	filter = nil;
+	f = nil;
 	ARGBEGIN{
 	}ARGEND;
 	if(argc!=1)
 		usage();
-	if(strcmp(*argv, "grayscale")==0)
-		filter = grayscale;
-	else if(strcmp(*argv, "sepia")==0)
-		filter = sepia;
-	else
+	for(n=0; n<nelem(filters); n++){
+		if(strcmp(*argv, filters[n].name)==0){
+			f = filters+n;
+			break;
+		}
+	}
+	if(f==nil)
 		usage();
 	if(memimageinit()<0)
 		sysfatal("memimageinit: %r");
@@ -66,9 +88,8 @@ main(int argc, char *argv[])
 		sysfatal("malloc: %r");
 	if(unloadmemimage(i, i->r, buf, n)<0)
 		sysfatal("unloadmemimage: %r");
-	for(p = 0; p < n; p+=4){
-		filter(buf+p);
-	}
+	for(p = 0; p < n; p+=4)
+		f->filter(buf+p);
 	if(loadmemimage(i, i->r, buf, n)<0)
 		sysfatal("unloadmemimage: %r");
 	writememimage(1, i);
