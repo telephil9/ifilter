@@ -16,7 +16,7 @@ struct Filter
 void
 grayscale(uchar p[3])
 {
-	uchar v = 0.2126*p[0] + 0.7152*p[1] + 0.0722*p[2];
+	uchar v = 0.2126*p[2] + 0.7152*p[1] + 0.0722*p[0];
 	p[0] = p[1] = p[2] = v;
 }
 
