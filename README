@@ -9,6 +9,10 @@ Available color filters are:
 - grayscale
 - sepia
 - invert
+- shade
+- tint
 
-usage: ifilter [grayscale|sepia|invert]
+usage: ifilter [-f factor] [grayscale|sepia|invert|shade|tint]
+
+Note: factor is used for the shade and tint filters and ignored otherwise.
 

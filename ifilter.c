@@ -10,18 +10,18 @@ typedef struct Filter Filter;
 struct Filter
 {
 	const char *name;
-	void (*filter)(uchar[3]);
+	void (*filter)(uchar[3], float);
 };
 
 void
-grayscale(uchar p[3])
+grayscale(uchar p[3], float)
 {
 	uchar v = 0.2126*p[2] + 0.7152*p[1] + 0.0722*p[0];
 	p[0] = p[1] = p[2] = v;
 }
 
 void
-sepia(uchar p[3])
+sepia(uchar p[3], float)
 {
 	float r, g, b;
 
@@ -34,7 +34,7 @@ sepia(uchar p[3])
 }
 
 void
-invert(uchar p[3])
+invert(uchar p[3], float)
 {
 	p[0] = 255 - p[0];
 	p[1] = 255 - p[1];
@@ -42,9 +42,25 @@ invert(uchar p[3])
 }
 
 void
+shade(uchar p[3], float factor)
+{
+	p[0] = p[0] * (1 - factor);
+	p[1] = p[1] * (1 - factor);
+	p[2] = p[2] * (1 - factor);
+}
+
+void
+tint(uchar p[3], float factor)
+{
+	p[0] = p[0] + (255.0 - p[0]) * factor;
+	p[1] = p[1] + (255.0 - p[1]) * factor;
+	p[2] = p[2] + (255.0 - p[2]) * factor;
+}
+
+void
 usage(void)
 {
-	fprint(2, "usage: %s [grayscale|sepia|invert]\n", argv0);
+	fprint(2, "usage: %s [-f factor] [grayscale|sepia|invert|shade|tint]\n", argv0);
 	exits("usage");
 }
 
@@ -52,6 +68,8 @@ static Filter filters[] = {
 	{ "grayscale", grayscale },
 	{ "sepia", sepia },
 	{ "invert", invert },
+	{ "shade", shade },
+	{ "tint", tint },
 };
 
 void
@@ -61,9 +79,17 @@ main(int argc, char *argv[])
 	int w, h, p, n;
 	uchar *buf;
 	Filter *f;
+	float factor;
 
 	f = nil;
+	factor = 0.0;
 	ARGBEGIN{
+	case 'f':
+		factor = (float)atof(EARGF(usage()));
+		break;
+	default:
+		usage();
+		break;
 	}ARGEND;
 	if(argc!=1)
 		usage();
@@ -75,6 +101,10 @@ main(int argc, char *argv[])
 	}
 	if(f==nil)
 		usage();
+	if(factor<0.0 || factor>1.0){
+		fprint(2, "factor should be between 0.0 and 1.0\n");
+		exits("invalid factor");
+	}
 	if(memimageinit()<0)
 		sysfatal("memimageinit: %r");
 	i = readmemimage(0);
@@ -89,7 +119,7 @@ main(int argc, char *argv[])
 	if(unloadmemimage(i, i->r, buf, n)<0)
 		sysfatal("unloadmemimage: %r");
 	for(p = 0; p < n; p+=4)
-		f->filter(buf+p);
+		f->filter(buf+p, factor);
 	if(loadmemimage(i, i->r, buf, n)<0)
 		sysfatal("unloadmemimage: %r");
 	writememimage(1, i);
