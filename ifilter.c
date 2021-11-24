@@ -121,12 +121,11 @@ main(int argc, char *argv[])
 		sysfatal("malloc: %r");
 	if(unloadmemimage(i, i->r, buf, n)<0)
 		sysfatal("unloadmemimage: %r");
+	freememimage(i);
 	for(p = 0; p < n; p+=4)
 		f->filter(buf+p, factor);
-	if(loadmemimage(i, i->r, buf, n)<0)
-		sysfatal("unloadmemimage: %r");
-	writememimage(1, i);
-	freememimage(i);
+	print("   x8r8g8b8 %11d %11d %11d %11d ", 0, 0, w, h);
+	write(1, buf, n);
 	exits(nil);
 }
 
