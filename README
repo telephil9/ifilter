@@ -5,9 +5,9 @@ Basic image filters.
 Filters read an image from standard input, apply a transformation
 and dumps the resulting image to standard output.
 
-ifilter:
+cfilter:
 --------
-ifilter implements basic color filters.
+cfilter implements basic color filters.
 
 Usage: cfilter [-f factor] [grayscale|sepia|invert|shade|tint]
 
