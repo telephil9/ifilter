@@ -2,8 +2,9 @@
 
 BIN=/$objtype/bin
 CFLAGS=-FTVw
-TARG=ifilter
-OFILES=ifilter.$O
+TARG=ifilter blur
 
-</sys/src/cmd/mkone
+default:V: all
+
+</sys/src/cmd/mkmany
 

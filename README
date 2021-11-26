@@ -1,18 +1,29 @@
 ifilter
 =======
-Basic image color filters.
+Basic image filters.
 
-ifilter reads an image from standard input, applies a color filter
+Filters read an image from standard input, apply a transformation
 and dumps the resulting image to standard output.
 
-Available color filters are:
+ifilter:
+--------
+ifilter implements basic color filters.
+
+Usage: cfilter [-f factor] [grayscale|sepia|invert|shade|tint]
+
+Available filters are:
 - grayscale
 - sepia
 - invert
-- shade
-- tint
+- shade(1)
+- tint(1)
 
-usage: ifilter [-f factor] [grayscale|sepia|invert|shade|tint]
+1: these filters use the factor argument
 
-Note: factor is used for the shade and tint filters and ignored otherwise.
+blur:
+-----
+blur implements blurring algorithms.
+
+Available filters are:
+- box: 3x3 box blur
 
