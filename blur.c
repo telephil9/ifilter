@@ -4,14 +4,13 @@
 #include <memdraw.h>
 
 typedef struct Filter Filter;
+int size;
 
 struct Filter
 {
 	const char *name;
 	uchar* (*filter)(uchar *data, int w, int h, int depth);
 };
-
-enum { R, G, B };
 
 uchar*
 box(uchar *data, int w, int h, int depth)
@@ -43,15 +42,43 @@ box(uchar *data, int w, int h, int depth)
 	return out;
 }
 
+uchar*
+pixelate(uchar *data, int w, int h, int depth)
+{
+	uchar *out;
+	int x, y, i, ox, oy, oi;
+
+	if(size < 0)
+		sysfatal("pixelate filter needs a size argument");
+	out = malloc(depth*w*h*sizeof(uchar));
+	if(out == nil)
+		return nil;
+	for(y = 0; y < h; y += size){
+		for(x = 0; x < w; x += size){
+			i = (x + w * y) * depth;
+			for(oy = y; oy < y+size; oy++){
+				for(ox = x; ox < x+size; ox++){
+					oi = (ox + w * oy) * depth;
+					out[oi + 0] = data[i + 0];
+					out[oi + 1] = data[i + 1];
+					out[oi + 2] = data[i + 2];
+				}
+			}
+		}
+	}
+	return out;
+}
+
 void
 usage(void)
 {
-	fprint(2, "usage: %s [box]\n", argv0);
+	fprint(2, "usage: %s [-s size] [box|pixelate]\n", argv0);
 	exits("usage");
 }
 
 static Filter filters[] = {
 	{ "box", box },
+	{ "pixelate", pixelate },
 };
 
 void
@@ -62,8 +89,12 @@ main(int argc, char *argv[])
 	uchar *buf, *out;
 	Filter *f;
 
+	size = -1;
 	f = nil;
 	ARGBEGIN{
+	case 's':
+		size = atoi(EARGF(usage()));
+		break;
 	default:
 		usage();
 		break;

@@ -24,6 +24,10 @@ blur:
 -----
 blur implements blurring algorithms.
 
+Usage: blur [-s size] [box|pixelate]
+
 Available filters are:
 - box: 3x3 box blur
+- pixelate: a simple pixelation filter using `-s` argument as pixel size
+
 
