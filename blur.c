@@ -46,7 +46,7 @@ uchar*
 pixelate(uchar *data, int w, int h, int depth)
 {
 	uchar *out;
-	int x, y, i, ox, oy, oi, sr, sg, sb;
+	int x, y, ox, oy, oi, sr, sg, sb;
 
 	if(size < 0)
 		sysfatal("pixelate filter needs a size argument");
@@ -55,7 +55,6 @@ pixelate(uchar *data, int w, int h, int depth)
 		return nil;
 	for(y = 0; y < h; y += size){
 		for(x = 0; x < w; x += size){
-			//i = (x + w * y) * depth;
 			sr = sg = sb = 0;
 			for(oy = y; oy < y+size; oy++){
 				for(ox = x; ox < x+size; ox++){
@@ -65,12 +64,15 @@ pixelate(uchar *data, int w, int h, int depth)
 					sb += data[oi + 2];
 				}
 			}
+			sr /= (size*size);
+			sg /= (size*size);
+			sb /= (size*size);
 			for(oy = y; oy < y+size; oy++){
 				for(ox = x; ox < x+size; ox++){
 					oi = (ox + w * oy) * depth;
-					out[oi + 0] = sr / (size*size);
-					out[oi + 1] = sg / (size*size);
-					out[oi + 2] = sb / (size*size);
+					out[oi + 0] = sr;
+					out[oi + 1] = sg;
+					out[oi + 2] = sb;
 				}
 			}
 		}
