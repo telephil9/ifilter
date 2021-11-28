@@ -16,9 +16,8 @@ uchar*
 box(uchar *data, int w, int h, int depth)
 {
 	uchar *out;
-	int x, y, r, c, s;
+	int x, y, c, s;
 
-	r = w * depth;
 	out = malloc(depth*w*h*sizeof(uchar));
 	if(out == nil)
 		return nil;
@@ -26,16 +25,18 @@ box(uchar *data, int w, int h, int depth)
 	for(y = 1; y < h - 1; y++){
 		for(x = 1; x < w - 1; x++){
 			for(c = 0; c < 3; c++){ /* R G B */
-				s = data[(x - 1)*depth + r * (y + 1) + c] +
-					data[(x + 0)*depth + r * (y + 1) + c] +
-					data[(x + 1)*depth + r * (y + 1) + c] +
-					data[(x - 1)*depth + r * (y + 0) + c] +
-					data[(x + 0)*depth + r * (y + 0) + c] +
-					data[(x + 1)*depth + r * (y + 0) + c] +
-					data[(x - 1)*depth + r * (y - 1) + c] +
-					data[(x + 0)*depth + r * (y - 1) + c] +
-					data[(x + 1)*depth + r * (y - 1) + c];
-				out[x * depth + r * y + c] = s / 9;
+#define P²(X,Y,C) (data[((X) + w*(Y))*depth + C] * data[((X) + w*(Y))*depth + C])
+				s = P²(x - 1, y + 1, c) +
+					P²(x + 0, y + 1, c) +
+					P²(x + 1, y + 1, c) +
+					P²(x - 1, y + 0, c) +
+					P²(x + 0, y + 0, c) +
+					P²(x + 1, y + 0, c) +
+					P²(x - 1, y - 1, c) +
+					P²(x + 0, y - 1, c) +
+					P²(x + 1, y - 1, c);
+				out[(x + w * y) * depth + c] = sqrt(s / 9);
+#undef P²
 			}
 		}
 	}
@@ -59,14 +60,14 @@ pixelate(uchar *data, int w, int h, int depth)
 			for(oy = y; oy < y+size; oy++){
 				for(ox = x; ox < x+size; ox++){
 					oi = (ox + w * oy) * depth;
-					sr += data[oi + 0];
-					sg += data[oi + 1];
-					sb += data[oi + 2];
+					sr += data[oi + 0]*data[oi + 0];
+					sg += data[oi + 1]*data[oi + 0];
+					sb += data[oi + 2]*data[oi + 0];
 				}
 			}
-			sr /= (size*size);
-			sg /= (size*size);
-			sb /= (size*size);
+			sr = sqrt(sr/(size*size));
+			sg = sqrt(sg/(size*size));
+			sb = sqrt(sb/(size*size));
 			for(oy = y; oy < y+size; oy++){
 				for(ox = x; ox < x+size; ox++){
 					oi = (ox + w * oy) * depth;
