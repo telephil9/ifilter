@@ -28,6 +28,7 @@ Usage: blur [-s size] [box|pixelate]
 
 Available filters are:
 - box: 3x3 box blur
+- gaussian: Gaussian blur using `-s` as the convolution kernel radius (ie kernel will be a matrix r*r with r=2*size+1)
 - pixelate: a simple pixelation filter using `-s` argument as pixel size
 
 

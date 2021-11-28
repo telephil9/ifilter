@@ -141,7 +141,7 @@ gaussian(uchar *data, int w, int h, int depth)
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-s size] [box|pixelate]\n", argv0);
+	fprint(2, "usage: %s [-s size] [box|gaussian|pixelate]\n", argv0);
 	exits("usage");
 }
 
