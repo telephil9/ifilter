@@ -72,11 +72,22 @@ static Filter filters[] = {
 	{ "tint", tint },
 };
 
+int
+isalpha(ulong chan)
+{
+	ulong t;
+
+	for(t = chan; t; t >>= 8)
+		if(TYPE(t) == CAlpha)
+			return 1;
+	return 0;
+}
+
 void
 main(int argc, char *argv[])
 {
 	Memimage *o, *i;
-	int w, h, p, n;
+	int w, h, p, n, a;
 	uchar *buf;
 	Filter *f;
 	float factor;
@@ -110,7 +121,8 @@ main(int argc, char *argv[])
 	o = readmemimage(0);
 	if(o==nil)
 		sysfatal("readmemimage: %r");
-	i = allocmemimage(o->r, XRGB32);
+	a = isalpha(o->chan);
+	i = allocmemimage(o->r, a ? ARGB32 : XRGB32);
 	memimagedraw(i, i->r, o, o->r.min, nil, ZP, S);
 	freememimage(o);
 	w = Dx(i->r);
@@ -124,7 +136,7 @@ main(int argc, char *argv[])
 	freememimage(i);
 	for(p = 0; p < n; p+=4)
 		f->filter(buf+p, factor);
-	print("   x8r8g8b8 %11d %11d %11d %11d ", 0, 0, w, h);
+	print("   %c8r8g8b8 %11d %11d %11d %11d ", a ? 'a' : 'x', 0, 0, w, h);
 	write(1, buf, n);
 	exits(nil);
 }
