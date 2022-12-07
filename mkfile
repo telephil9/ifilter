@@ -2,7 +2,7 @@
 
 BIN=/$objtype/bin
 CFLAGS=-FTVw
-TARG=cfilter blur
+TARG=cfilter blur dither
 
 default:V: all
 
