@@ -1,26 +1,24 @@
-#include <u.h>
-#include <libc.h>
-#include <draw.h>
-#include <memdraw.h>
-
+#include "a.h"
+	
 typedef struct Filter Filter;
-int size;
 
 struct Filter
 {
 	const char *name;
-	uchar* (*filter)(uchar *data, int w, int h, int depth);
+	filterfn filter;
 };
+
+int size;
 
 uchar*
 box(uchar *data, int w, int h, int depth)
 {
 	uchar *out;
-	int x, y, c, s;
+	int n, x, y, c, s;
 
-	out = malloc(depth*w*h*sizeof(uchar));
-	if(out == nil)
-		return nil;
+	n = depth*w*h*sizeof(uchar);
+	out = eallocbuf(n);
+	memmove(out, data, n);
 	/* box blur is not defined for edge points */
 	for(y = 1; y < h - 1; y++){
 		for(x = 1; x < w - 1; x++){
@@ -44,44 +42,6 @@ box(uchar *data, int w, int h, int depth)
 }
 
 uchar*
-pixelate(uchar *data, int w, int h, int depth)
-{
-	uchar *out;
-	int x, y, ox, oy, oi, sr, sg, sb;
-
-	if(size < 0)
-		sysfatal("pixelate filter needs a size argument");
-	out = malloc(depth*w*h*sizeof(uchar));
-	if(out == nil)
-		return nil;
-	for(y = 0; y < h; y += size){
-		for(x = 0; x < w; x += size){
-			sr = sg = sb = 0;
-			for(oy = y; oy < y+size; oy++){
-				for(ox = x; ox < x+size; ox++){
-					oi = (ox + w * oy) * depth;
-					sr += data[oi + 0]*data[oi + 0];
-					sg += data[oi + 1]*data[oi + 0];
-					sb += data[oi + 2]*data[oi + 0];
-				}
-			}
-			sr = sqrt(sr/(size*size));
-			sg = sqrt(sg/(size*size));
-			sb = sqrt(sb/(size*size));
-			for(oy = y; oy < y+size; oy++){
-				for(ox = x; ox < x+size; ox++){
-					oi = (ox + w * oy) * depth;
-					out[oi + 0] = sr;
-					out[oi + 1] = sg;
-					out[oi + 2] = sb;
-				}
-			}
-		}
-	}
-	return out;
-}
-
-uchar*
 gaussian(uchar *data, int w, int h, int depth)
 {
 	const double E = 2.7182818284590452354;
@@ -92,9 +52,9 @@ gaussian(uchar *data, int w, int h, int depth)
 
 	if(size < 0)
 		sysfatal("gaussian filter needs a size argument");
-	out = malloc(depth*w*h*sizeof(uchar));
-	if(out == nil)
-		return nil;
+	n = depth*w*h*sizeof(uchar);
+	out = eallocbuf(n);
+	memmove(out, data, n);
 	σ = (double)size / 2.0;
 	kw = 2 * size + 1;
 	k = malloc(kw*kw*sizeof(double));
@@ -141,27 +101,34 @@ gaussian(uchar *data, int w, int h, int depth)
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-s size] [box|gaussian|pixelate]\n", argv0);
+	fprint(2, "usage: %s -f box|gaussian [-s size]\n", argv0);
 	exits("usage");
 }
 
 static Filter filters[] = {
 	{ "box", box },
-	{ "pixelate", pixelate },
 	{ "gaussian", gaussian },
 };
 
 void
 main(int argc, char *argv[])
 {
-	Memimage *o, *i;
-	int w, h, n;
-	uchar *buf, *out;
 	Filter *f;
+	char *fname;
+	int i;
 
-	size = -1;
+	size = 2;
 	f = nil;
 	ARGBEGIN{
+	case 'f':
+		fname = EARGF(usage());
+		for(i=0; i<nelem(filters); i++){
+			if(strcmp(fname, filters[i].name)==0){
+				f = filters+i;
+				break;
+			}
+		}
+		break;
 	case 's':
 		size = atoi(EARGF(usage()));
 		break;
@@ -169,38 +136,7 @@ main(int argc, char *argv[])
 		usage();
 		break;
 	}ARGEND;
-	if(argc!=1)
-		usage();
-	for(n=0; n<nelem(filters); n++){
-		if(strcmp(*argv, filters[n].name)==0){
-			f = filters+n;
-			break;
-		}
-	}
 	if(f==nil)
 		usage();
-	if(memimageinit()<0)
-		sysfatal("memimageinit: %r");
-	o = readmemimage(0);
-	if(o==nil)
-		sysfatal("readmemimage: %r");
-	i = allocmemimage(rectsubpt(o->r, o->r.min), XRGB32);
-	memimagedraw(i, i->r, o, o->r.min, nil, ZP, S);
-	freememimage(o);
-	w = Dx(i->r);
-	h = Dy(i->r);
-	n = 4*w*h*sizeof(uchar);
-	buf = malloc(n);
-	if(buf==nil)
-		sysfatal("malloc: %r");
-	if(unloadmemimage(i, i->r, buf, n)<0)
-		sysfatal("unloadmemimage: %r");
-	freememimage(i);
-	out = f->filter(buf, w, h, 4);
-	if(out == nil)
-		sysfatal("filter '%s' failed: %r", f->name);
-	print("   x8r8g8b8 %11d %11d %11d %11d ", 0, 0, w, h);
-	write(1, out, n);
-	exits(nil);
+	applyfilter(f->name, f->filter);
 }
-

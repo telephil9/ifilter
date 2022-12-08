@@ -1,66 +1,88 @@
-#include <u.h>
-#include <libc.h>
-#include <draw.h>
-#include <memdraw.h>
-
-#define MIN(x,y) ((x)<(y)?(x):(y))
+#include "a.h"
 
 typedef struct Filter Filter;
 
 struct Filter
 {
 	const char *name;
-	void (*filter)(uchar[3], float);
+	filterfn f;
 };
 
-void
-grayscale(uchar p[3], float)
+float ratio;
+
+uchar*
+grayscale(uchar* data, int w, int h, int depth)
 {
-	uchar v = 0.2126*p[2] + 0.7152*p[1] + 0.0722*p[0];
-	p[0] = p[1] = p[2] = v;
+	uchar v;
+	int i;
+
+	for(i = 0; i < w*h*depth; i += 4){
+		v = 0.2126*data[i+Cred] + 0.7152*data[i+Cgreen] + 0.0722*data[i+Cblue];
+		data[i+Cred] = data[i+Cgreen] = data[i+Cblue] = v;
+	}
+	return data;
 }
 
-void
-sepia(uchar p[3], float)
+uchar*
+sepia(uchar* data, int w, int h, int depth)
 {
 	float r, g, b;
+	int i;
 
-	r = 0.393*p[2] + 0.769*p[1] + 0.189*p[0];
-	g = 0.349*p[2] + 0.686*p[1] + 0.168*p[0];
-	b = 0.272*p[2] + 0.534*p[1] + 0.131*p[0];
-	p[2] = MIN(r, 255);
-	p[1] = MIN(g, 255);
-	p[0] = MIN(b, 255);
+	for(i = 0; i < w*h*depth; i += 4){
+		r = 0.393*data[i+Cred] + 0.769*data[i+Cgreen] + 0.189*data[i+Cblue];
+		g = 0.349*data[i+Cred] + 0.686*data[i+Cgreen] + 0.168*data[i+Cblue];
+		b = 0.272*data[i+Cred] + 0.534*data[i+Cgreen] + 0.131*data[i+Cblue];
+		data[i+Cred]   = clamp(r);
+		data[i+Cgreen] = clamp(g);
+		data[i+Cblue]  = clamp(b);
+	}
+	return data;
 }
 
-void
-invert(uchar p[3], float)
+uchar*
+invert(uchar* data, int w, int h, int depth)
 {
-	p[0] = 255 - p[0];
-	p[1] = 255 - p[1];
-	p[2] = 255 - p[2];
+	int i;
+
+	for(i = 0; i < w*h*depth; i += 4){
+		data[i+Cred]   = 255 - data[i+Cred];
+		data[i+Cgreen] = 255 - data[i+Cgreen];
+		data[i+Cblue]  = 255 - data[i+Cblue];
+	}
+	return data;
 }
 
-void
-shade(uchar p[3], float factor)
+uchar*
+shade(uchar* data, int w, int h, int depth)
 {
-	p[0] = p[0] * (1 - factor);
-	p[1] = p[1] * (1 - factor);
-	p[2] = p[2] * (1 - factor);
+	int i;
+
+	for(i = 0; i < w*h*depth; i += 4){
+		data[i+Cred]   *= (1 - ratio);
+		data[i+Cgreen] *= (1 - ratio);
+		data[i+Cblue]  *= (1 - ratio);
+	}
+	return data;
 }
 
-void
-tint(uchar p[3], float factor)
+uchar*
+tint(uchar* data, int w, int h, int depth)
 {
-	p[0] = p[0] + (255.0 - p[0]) * factor;
-	p[1] = p[1] + (255.0 - p[1]) * factor;
-	p[2] = p[2] + (255.0 - p[2]) * factor;
+	int i;
+
+	for(i = 0; i < w*h*depth; i += 4){
+		data[i+Cred]   += (255 - data[i+Cred]) * ratio;
+		data[i+Cgreen] += (255 - data[i+Cgreen]) * ratio;
+		data[i+Cblue]  += (255 - data[i+Cblue]) * ratio;
+	}
+	return data;
 }
 
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-f factor] [grayscale|sepia|invert|shade|tint]\n", argv0);
+	fprint(2, "usage: %s -f grayscale|sepia|invert|shade|tint [-r ratio]\n", argv0);
 	exits("usage");
 }
 
@@ -72,72 +94,37 @@ static Filter filters[] = {
 	{ "tint", tint },
 };
 
-int
-isalpha(ulong chan)
-{
-	ulong t;
-
-	for(t = chan; t; t >>= 8)
-		if(TYPE(t) == CAlpha)
-			return 1;
-	return 0;
-}
-
 void
 main(int argc, char *argv[])
 {
-	Memimage *o, *i;
-	int w, h, p, n, a;
-	uchar *buf;
 	Filter *f;
-	float factor;
+	char *fname;
+	int n;
 
 	f = nil;
-	factor = 0.0;
+	ratio = 0.0;
 	ARGBEGIN{
 	case 'f':
-		factor = (float)atof(EARGF(usage()));
+		fname = EARGF(usage());
+		for(n=0; n<nelem(filters); n++){
+			if(strcmp(fname, filters[n].name)==0){
+				f = filters+n;
+				break;
+			}
+		}
+		break;
+	case 'r':
+		ratio = (float)atof(EARGF(usage()));
 		break;
 	default:
 		usage();
 		break;
 	}ARGEND;
-	if(argc!=1)
-		usage();
-	for(n=0; n<nelem(filters); n++){
-		if(strcmp(*argv, filters[n].name)==0){
-			f = filters+n;
-			break;
-		}
-	}
 	if(f==nil)
 		usage();
-	if(factor<0.0 || factor>1.0){
-		fprint(2, "factor should be between 0.0 and 1.0\n");
-		exits("invalid factor");
+	if(ratio<0.0 || ratio>1.0){
+		fprint(2, "ratio should be between 0.0 and 1.0\n");
+		exits("invalid ratio");
 	}
-	if(memimageinit()<0)
-		sysfatal("memimageinit: %r");
-	o = readmemimage(0);
-	if(o==nil)
-		sysfatal("readmemimage: %r");
-	a = isalpha(o->chan);
-	i = allocmemimage(o->r, a ? ARGB32 : XRGB32);
-	memimagedraw(i, i->r, o, o->r.min, nil, ZP, S);
-	freememimage(o);
-	w = Dx(i->r);
-	h = Dy(i->r);
-	n = 4*w*h*sizeof(uchar);
-	buf = malloc(n);
-	if(buf==nil)
-		sysfatal("malloc: %r");
-	if(unloadmemimage(i, i->r, buf, n)<0)
-		sysfatal("unloadmemimage: %r");
-	freememimage(i);
-	for(p = 0; p < n; p+=4)
-		f->filter(buf+p, factor);
-	print("   %c8r8g8b8 %11d %11d %11d %11d ", a ? 'a' : 'x', 0, 0, w, h);
-	write(1, buf, n);
-	exits(nil);
+	applyfilter(f->name, f->f);
 }
-

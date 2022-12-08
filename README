@@ -9,7 +9,7 @@ cfilter:
 --------
 cfilter implements basic color filters.
 
-Usage: cfilter [-f factor] [grayscale|sepia|invert|shade|tint]
+Usage: image/cfilter -f grayscale|sepia|invert|shade|tint [-r ratio]
 
 Available filters are:
 - grayscale
@@ -18,22 +18,32 @@ Available filters are:
 - shade(1)
 - tint(1)
 
-1: these filters use the factor argument
+1: these filters use the ratio argument to determine the transformation ratio.
 
 blur:
 -----
 blur implements blurring algorithms.
 
-Usage: blur [-s size] [box|pixelate]
+Usage: image/blur -f box|gaussian [-s size]
 
 Available filters are:
 - box: 3x3 box blur
-- gaussian: Gaussian blur using `-s` as the convolution kernel radius (ie kernel will be a matrix r*r with r=2*size+1)
-- pixelate: a simple pixelation filter using `-s` argument as pixel size
+- gaussian: Gaussian blur using `-s` as the convolution kernel radius (ie kernel will be a matrix r*r with r=2*s+1)
+
+pixelate:
+---------
+pixelate implements a pixelation algorithm.
+
+Usage: image/pixelate [-s size]
+size is the output pixel size (defaults to 8)
 
 dither:
 -------
 Floyd-Steinberg dithering algorithm.
 
-Usage: dither
+Usage: image/dither
 
+
+--
+Author: phil9
+License: MIT
