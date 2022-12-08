@@ -1,74 +1,35 @@
 #include "a.h"
-	
-typedef struct Filter Filter;
 
-struct Filter
-{
-	const char *name;
-	filterfn filter;
-};
+enum { Fbox, Fgaussian, };
+char* filters[] = { "box", "gaussian" };
 
+double *kernel;
 int size;
 
-uchar*
-box(uchar *data, int w, int h, int depth)
-{
-	uchar *out;
-	int n, x, y, c, s;
+double boxkernel[] = {
+	1./9., 1./9., 1./9.,
+	1./9., 1./9., 1./9.,
+	1./9., 1./9., 1./9.,
+};
 
-	n = depth*w*h*sizeof(uchar);
-	out = eallocbuf(n);
-	memmove(out, data, n);
-	/* box blur is not defined for edge points */
-	for(y = 1; y < h - 1; y++){
-		for(x = 1; x < w - 1; x++){
-			for(c = 0; c < 3; c++){ /* R G B */
-#define P²(X,Y,C) (data[((X) + w*(Y))*depth + C] * data[((X) + w*(Y))*depth + C])
-				s = P²(x - 1, y + 1, c) +
-					P²(x + 0, y + 1, c) +
-					P²(x + 1, y + 1, c) +
-					P²(x - 1, y + 0, c) +
-					P²(x + 0, y + 0, c) +
-					P²(x + 1, y + 0, c) +
-					P²(x - 1, y - 1, c) +
-					P²(x + 0, y - 1, c) +
-					P²(x + 1, y - 1, c);
-				out[(x + w * y) * depth + c] = sqrt(s / 9);
-#undef P²
-			}
-		}
-	}
-	return out;
-}
-
-uchar*
-gaussian(uchar *data, int w, int h, int depth)
+double*
+computekernel(int radius, double σ)
 {
-	const double E = 2.7182818284590452354;
 	const double Π = 3.14159265358979323846;
-	uchar *out;
-	int kw, x, y, kx, ky;
-	double *k, σ, s, e, n, d, v, r, g, b;
+	double *k, d, g, s;
+	int kw, x, y;
 
-	if(size < 0)
-		sysfatal("gaussian filter needs a size argument");
-	n = depth*w*h*sizeof(uchar);
-	out = eallocbuf(n);
-	memmove(out, data, n);
-	σ = (double)size / 2.0;
-	kw = 2 * size + 1;
+	kw = 2*radius+1;
 	k = malloc(kw*kw*sizeof(double));
 	if(k == nil)
-		return nil;
-	s = 0.0f;
-	for(y = -size; y <= size; y++){
-		for(x = -size; x <= size; x++){
-			n = (double)(-(x * x + y * y));
-			d = 2 * σ * σ;
-			e = pow(E, n / d);
-			v = e / (2 * Π * σ * σ);
-			k[(x + size) + kw * (y + size)] = v;
-			s += v;
+		sysfatal("malloc: %r");
+	d  = 1.0/(2.0*Π*σ*σ);
+	s  = 0.0;
+	for(y = -radius; y <= radius; y++){
+		for(x = -radius; x <= radius; x++){
+			g = d*exp(-(x*x+y*y)/(2*σ*σ));
+			k[(x+radius) + kw * (y+radius)] = g;
+			s += g;
 		}
 	}
 	for(y = 0; y < kw; y++){
@@ -76,12 +37,28 @@ gaussian(uchar *data, int w, int h, int depth)
 			k[x + kw * y] /= s;
 		}
 	}
+	return k;
+}
+
+uchar*
+convolve(uchar *data, int w, int h, int depth)
+{
+	uchar *out;
+	int kw, n, x, y, kx, ky;
+	double v, r, g, b;
+
+	if(size < 0)
+		sysfatal("gaussian filter needs a size argument");
+	n = depth*w*h*sizeof(uchar);
+	out = eallocbuf(n);
+	memmove(out, data, n);
+	kw = 2*size+1;
 	for(y = size; y < (h - size); y++){
 		for(x = size; x < (w - size); x++){
 			r = g = b = 0.0;
 			for(ky = -size; ky <= size; ky++){
 				for(kx = -size; kx <= size; kx++){
-					v = k[(kx + size) + kw * (ky + size)];
+					v = kernel[(kx + size) + kw * (ky + size)];
 #define P(X,Y,C) data[((X) + (w*(Y)))*depth + C]
 					r += (double)P(x - kx, y - ky, 0) * v;
 					g += (double)P(x - kx, y - ky, 1) * v;
@@ -94,7 +71,6 @@ gaussian(uchar *data, int w, int h, int depth)
 			out[(x + w*y)*depth + 2] = b;
 		}
 	}
-	free(k);
 	return out;
 }
 
@@ -105,26 +81,21 @@ usage(void)
 	exits("usage");
 }
 
-static Filter filters[] = {
-	{ "box", box },
-	{ "gaussian", gaussian },
-};
-
 void
 main(int argc, char *argv[])
 {
-	Filter *f;
 	char *fname;
-	int i;
+	int f, i;
 
+	fname = nil;
 	size = 2;
-	f = nil;
+	f = -1;
 	ARGBEGIN{
 	case 'f':
 		fname = EARGF(usage());
 		for(i=0; i<nelem(filters); i++){
-			if(strcmp(fname, filters[i].name)==0){
-				f = filters+i;
+			if(strcmp(fname, filters[i])==0){
+				f = i;
 				break;
 			}
 		}
@@ -136,7 +107,16 @@ main(int argc, char *argv[])
 		usage();
 		break;
 	}ARGEND;
-	if(f==nil)
+	if(f<0)
 		usage();
-	applyfilter(f->name, f->filter);
+	switch(f){
+	case Fbox:
+		size   = 1;
+		kernel = boxkernel;
+		break;
+	case Fgaussian:
+		kernel = computekernel(size, 1.0);
+		break;
+	}
+	applyfilter(fname, convolve);
 }
