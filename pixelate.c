@@ -19,9 +19,9 @@ pixelate(uchar *data, int w, int h, int depth)
 			for(oy = y; oy < y+size; oy++){
 				for(ox = x; ox < x+size; ox++){
 					oi = (ox + w * oy) * depth;
-					sr += data[oi + 0]*data[oi + 0];
-					sg += data[oi + 1]*data[oi + 0];
-					sb += data[oi + 2]*data[oi + 0];
+					sr += data[oi + Cred]   * data[oi + Cred];
+					sg += data[oi + Cgreen] * data[oi + Cgreen];
+					sb += data[oi + Cblue]  * data[oi + Cblue];
 				}
 			}
 			sr = sqrt(sr/(size*size));
@@ -30,9 +30,9 @@ pixelate(uchar *data, int w, int h, int depth)
 			for(oy = y; oy < y+size; oy++){
 				for(ox = x; ox < x+size; ox++){
 					oi = (ox + w * oy) * depth;
-					out[oi + 0] = sr;
-					out[oi + 1] = sg;
-					out[oi + 2] = sb;
+					out[oi + Cred]   = sr;
+					out[oi + Cgreen] = sg;
+					out[oi + Cblue]  = sb;
 				}
 			}
 		}
