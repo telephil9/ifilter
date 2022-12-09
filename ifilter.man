@@ -1,0 +1,77 @@
+.TH IFILTER 1
+.SH NAME
+ifilter \- image filters
+.SH SYNOPSIS
+.B image/cfilter
+[
+.B -f
+.I filter
+] [
+.B -r
+.I ratio
+]
+.br
+.B image/blur
+[
+.B -f
+.I type
+] [
+.B -r
+.I radius
+] [
+.B -s
+.I stddev
+] 
+.br
+.B image/pixelate
+[
+.B -s
+.I size
+]
+.br
+.B image/dither
+.SH DESCRIPTION
+These programs apply a filter on images read from the standard input and dump the resulting image on standard output.
+.TP
+.BR image/cfilter
+Applies a color filter to the input image. Possible filters are
+.IR grayscale ,
+.IR sepia ,
+.IR invert ,
+.IR shade 
+and
+.IR tint .
+The 
+.IR shade
+and
+.IR tint 
+filters use the
+.B -r
+parameter as a percentage
+.IR ratio
+between source and target colors.
+.PP
+.TP
+.B image/blur
+Applies a low-pass filter to blur the input image. Possible filters are 
+.IR box , 
+a simple filter using a 3x3 non-weighted convolution matrix or
+.IR gaussian ,
+which uses a weighted convolution matrix of size 2 *
+.I radius
++ 1 (default radius is 2 leading to a 5x5 matrix) and a standard deviation of
+.I stddev
+(defaults to 1.0).
+.PP
+.TP
+.B image/pixelate
+Increases the pixel size of the input image to
+.I size
+(defaults to 8).
+.TP
+.B image/dither
+Applies a Floyd-Steinberg error diffusion based dithering algorithm to the input image.
+.SH AUTHOR
+phil9
+.SH LICENSE
+MIT
